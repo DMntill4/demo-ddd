@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-Main<infrastructure>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.backintro.Main",
+            "projectName": "infrastructure",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-BackIntroApplication<infrastructure>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.backintro.infrastructure.BackIntroApplication",
+            "projectName": "infrastructure",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
