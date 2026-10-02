@@ -1,8 +1,9 @@
 spring:
   application:
-    name: back-intro
+    name: demo-application
   profiles:
     active: dev
+
 
 server:
   port: 8081
