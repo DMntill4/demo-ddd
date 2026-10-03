@@ -34,7 +34,7 @@ queue:
     fixed-delay-ms: 5000
 
 server:
-  port: 8081
+  port: 8080
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}

@@ -2,10 +2,10 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Spring Boot-DemoApplication<infrastructure>",
+            "name": "Spring Boot-BackIntroApplication<infrastructure>",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "mainClass": "com.demodd.infrastructure.DemoApplication",
+            "mainClass": "com.backintro.infrastructure.BackIntroApplication",
             "projectName": "infrastructure",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
