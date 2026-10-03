@@ -1,0 +1,43 @@
+package com.backintro.infrastructure.messagetype.adapters.out.persistence.entity;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "message_types")
+public class MessageTypeJpaEntity {
+    @Id
+    private UUID id;
+
+    @Column(name = "name_type", nullable = false)
+    private String nameType;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    public MessageTypeJpaEntity() {
+    }
+
+    public MessageTypeJpaEntity(UUID id, String nameType, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = id;
+        this.nameType = nameType;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public String getNameType() { return nameType; }
+    public void setNameType(String nameType) { this.nameType = nameType; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+}
