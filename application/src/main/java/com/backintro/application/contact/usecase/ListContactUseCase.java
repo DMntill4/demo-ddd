@@ -1,0 +1,20 @@
+package com.backintro.application.contact.usecase;
+
+import java.util.List;
+import com.backintro.application.contact.dto.ContactResponse;
+import com.backintro.domain.contact.port.repository.ContactRepository;
+
+public class ListContactUseCase {
+    private final ContactRepository repository;
+
+    public ListContactUseCase(ContactRepository repository) {
+        this.repository = repository;
+    }
+
+    public List<ContactResponse> execute() {
+        return repository.findAll()
+                .stream()
+                .map(ContactResponse::fromDomain)
+                .toList();
+    }
+}

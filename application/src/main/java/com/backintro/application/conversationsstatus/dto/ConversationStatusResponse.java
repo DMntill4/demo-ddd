@@ -1,0 +1,12 @@
+package com.backintro.application.conversationsstatus.dto;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import com.backintro.domain.conversationsstatus.model.aggregate.ConversationStatus;
+
+public record ConversationStatusResponse(UUID id, String nameStatus, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public static ConversationStatusResponse fromDomain(ConversationStatus aggregate) {
+        return new ConversationStatusResponse(aggregate.id().value(), aggregate.nameStatus(), aggregate.createdAt(), aggregate.updatedAt());
+    }
+}
