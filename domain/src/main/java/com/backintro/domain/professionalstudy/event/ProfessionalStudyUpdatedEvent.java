@@ -1,0 +1,11 @@
+package com.backintro.domain.professionalstudy.event;
+
+import java.time.LocalDateTime;
+import com.backintro.domain.common.event.DomainEvent;
+import com.backintro.domain.professionalstudy.model.valueobject.ProfessionalStudyId;
+
+public record ProfessionalStudyUpdatedEvent(
+        ProfessionalStudyId id,
+        LocalDateTime occurredOn
+) implements DomainEvent {
+}

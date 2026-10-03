@@ -1,0 +1,14 @@
+package com.backintro.domain.consenttype.model.valueobject;
+
+import java.util.Objects;
+import java.util.UUID;
+
+public record ConsentTypeId(UUID value) {
+    public ConsentTypeId {
+        Objects.requireNonNull(value, "id must not be null");
+    }
+
+    public static ConsentTypeId generate() {
+        return new ConsentTypeId(UUID.randomUUID());
+    }
+}

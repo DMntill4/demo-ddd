@@ -1,0 +1,11 @@
+package com.backintro.domain.chatconversationaisetting.event;
+
+import java.time.LocalDateTime;
+import com.backintro.domain.common.event.DomainEvent;
+import com.backintro.domain.chatconversationaisetting.model.valueobject.ChatAiSettingsId;
+
+public record ChatAiSettingsDeletedEvent(
+        ChatAiSettingsId id,
+        LocalDateTime occurredOn
+) implements DomainEvent {
+}
