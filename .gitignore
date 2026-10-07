@@ -1,2 +1,6 @@
 # Scratch directory
 scratch/
+target/
+**/target/
+.idea/
+*.iml
