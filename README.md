@@ -1,130 +1,134 @@
-# Demo DDD - Back-Intro Architecture
+# Modulo de Seguridad y Autenticacion JWT (Spring Security 6 & PostgreSQL)
 
-Sistema backend desarrollado bajo los principios de **Domain-Driven Design (DDD)**, **Arquitectura Hexagonal (Puertos y Adaptadores)** y **Clean Architecture**. El proyecto implementa una arquitectura basada en **53 Bounded Contexts independientes**, mapeados de forma exacta a partir de esquemas relacionales de base de datos PostgreSQL mediante migraciones de Flyway.
-
----
-
-## Tecnologias Utilizadas
-
-- **Lenguaje**: Java 21 / Java 25
-- **Framework Principal**: Spring Boot 3.3.x (Spring Web, Spring Data JPA)
-- **Base de Datos**: PostgreSQL 17
-- **Gestor de Migraciones**: Flyway Migration (Migraciones V1 a V10)
-- **Seguridad**: Spring Security 6 + JWT (JSON Web Tokens) con BCrypt y RBAC
-- **Contenedorizacion**: Docker & Docker Compose
-- **Herramienta de Construccion**: Apache Maven (Proyecto Multimodulo)
-
-> **NOTA SOBRE LA RAMA DE SEGURIDAD**:
-> Toda la implementacion de **Spring Security 6, JWT, migracion V10 y adaptadores de autenticacion** se encuentra desarrollada en la rama:
-> **`activityMigration`**
+Documentacion tecnica y guia de integracion para la implementacion del sistema de seguridad basado en **Spring Security 6**, **JSON Web Tokens (JWT)** y **PostgreSQL** dentro de la rama `activityMigration` del proyecto Back-Intro.
 
 ---
 
-## Estructura de Arquitectura Multimodulo
+## Descripcion General
 
-El proyecto se divide en tres modulos principales con estricta separacion de responsabilidades:
+Esta rama (`activityMigration`) extiende la arquitectura hexagonal y basada en Domain-Driven Design (DDD) del sistema para incorporar un esquema completo de **Autenticacion Stateless, Autorizacion basada en Roles (RBAC) y Encriptacion de Credenciales**, protegiendo el acceso a los endpoints HTTP correspondientes a los 53 Bounded Contexts de la aplicacion.
+
+---
+
+## Tecnologias y Componentes de Seguridad
+
+- **Spring Security 6**: Proteccion y gestion de autenticacion stateless sin manejo de sesiones en servidor.
+- **JWT (JSON Web Tokens)**: Algoritmo HMAC-SHA256 para emision, firma y validacion de tokens Bearer.
+- **BCrypt Password Encoder**: Algoritmo de hashing salteado para el almacenamiento seguro de contraseñas.
+- **Flyway Migration (V10)**: Script SQL `V10__security_users_and_roles.sql` para la creacion del esquema relacional de seguridad y siembra de roles.
+- **PostgreSQL 17**: Persistencia de datos en esquema dedicado `mindconnect_schema`.
+
+---
+
+## Modelo de Dominio y Persistencia (Flyway V10)
+
+La seguridad se estructura mediante las siguientes tablas creadas en la migracion V10:
+
+1. **`users`**: Almacena identificador unico (`UUID`), correo electronico, hash de contraseña (`BCrypt`), estado de cuenta (`active`, `locked`), contador de intentos fallidos y referencias opcionales a `professionals` y `patients`.
+2. **`roles`**: Contiene la definición de roles del sistema (`ROLE_ADMIN`, `ROLE_PROFESSIONAL`, `ROLE_PATIENT`).
+3. **`permissions`**: Permisos granulares de lectura y escritura (`CLINICAL_NOTE_READ`, `PATIENT_READ`, `CHAT_WRITE`, etc.).
+4. **`user_roles`**: Tabla de asociacion N:M entre usuarios y roles.
+5. **`role_permissions`**: Tabla de asociacion N:M entre roles y permisos.
+
+---
+
+## Arquitectura del Modulo de Autenticacion
+
+Seguimiento estricto de la Arquitectura Hexagonal en tres capas:
 
 ```
 back-intro/
-├── domain/            # Capa de Dominio (Logica pura de negocio sin dependencias externas)
-├── application/       # Capa de Aplicacion (Casos de uso, Comandos y DTOs)
-└── infrastructure/    # Capa de Infraestructura (Spring Boot, JPA, Controladores REST, Config, Security)
+├── domain/auth/
+│   ├── model/
+│   │   ├── aggregate/User.java          # Entidad de dominio con regla de negocio de seguridad
+│   │   ├── entity/Role.java             # Entidad de rol de dominio
+│   │   └── valueobject/                 # UserId, Email, PasswordHash
+│   └── port/
+│       ├── repository/                  # UserRepository, RoleRepository
+│       └── security/                    # PasswordHasherPort, TokenProviderPort
+│
+├── application/auth/
+│   ├── usecase/
+│   │   ├── LoginUseCase.java            # Autenticacion, validacion de contraseña y emision de token
+│   │   └── RegisterUserUseCase.java     # Registro de usuario, validacion de duplicados y hash
+│   ├── command/                         # LoginCommand, RegisterUserCommand
+│   └── dto/                             # AuthTokenResponse, UserResponse
+│
+└── infrastructure/auth/
+    ├── config/
+    │   ├── SecurityConfig.java          # SecurityFilterChain, reglas CORS/CSRF y autorizaciones
+    │   └── AuthBeansConfig.java         # Configuracion de Beans de uso de casos y adaptadores
+    ├── security/
+    │   ├── JwtAuthenticationFilter.java # Interceptor de peticiones HTTP para extraer y validar Bearer JWT
+    │   ├── JwtAuthenticationEntryPoint.java # Manejo de excepciones 401 Unauthorized
+    │   └── SecurityUser.java            # Implementacion de UserDetails de Spring Security
+    └── adapters/
+        ├── in/rest/controllers/AuthController.java # Endpoints /api/v1/auth/login y /register
+        └── out/
+            ├── persistence/             # Entities JPA, Repositories y Mappers
+            └── security/                # BCryptPasswordHasherAdapter, JwtTokenProviderAdapter
 ```
 
-### 1. Modulo Domain
-Contiene el modelo de dominio puro sin ninguna dependencia de frameworks de persistencia o controladores HTTP:
-- **Aggregate Root**: Entidades principales del dominio que encapsulan el estado y registran eventos.
-- **Value Objects**: Encapsulamiento inmutable de identificadores (`UUID`) y atributos con validaciones.
-- **Domain Events**: Eventos de dominio emitidos ante cambios de estado (`RegisteredEvent`, `UpdatedEvent`, `DeletedEvent`).
-- **Ports (Repository & Security Interfaces)**: Interfaces que definen los contratos de persistencia y seguridad (`UserRepository`, `RoleRepository`, `TokenProviderPort`, `PasswordEncoderPort`).
+---
 
-### 2. Modulo Application
-Coordina la ejecucion de la logica de negocio a traves de casos de uso:
-- **Use Cases**: Clases encargadas de ejecutar operaciones individuales (`Register`, `GetById`, `List`, `Update`, `Delete`, `LoginUseCase`, `RegisterUserUseCase`).
-- **Commands**: Java Records inmutables para transferir datos de entrada hacia el caso de uso.
-- **DTOs / Responses**: Records para retornar informacion hacia las capas exteriores.
+## Reglas de Proteccion HTTP
 
-### 3. Modulo Infrastructure
-Implementa los detalles tecnologicos y adaptadores de la arquitectura hexagonal:
-- **Adapters In (REST Controllers)**: Controladores REST que exponen endpoints HTTP (`POST`, `GET`, `PUT`, `DELETE`, `AuthController`).
-- **Adapters Out (Persistence & Security)**: Entidades JPA (`@Entity`), interfaces `JpaRepository`, mappers, adaptadores de seguridad (`BCryptPasswordHasherAdapter`, `JwtTokenProviderAdapter`).
-- **Security & Config**: `SecurityConfig` (SecurityFilterChain stateless con JWT), `JwtAuthenticationFilter`, `JwtAuthenticationEntryPoint`.
+En `SecurityConfig.java` se define la siguiente directiva de proteccion:
+
+- **Rutas Publicas**:
+  - `POST /api/v1/auth/register` (Registro de usuarios)
+  - `POST /api/v1/auth/login` (Autenticacion y emision de token)
+  - `/swagger-ui/**`, `/v3/api-docs/**` (Documentacion de API)
+- **Rutas Restringidas**:
+  - `/api/v1/clinical-notes/**`: Requiere rol `ROLE_PROFESSIONAL` o `ROLE_ADMIN`.
+  - **Cualquier otra ruta (`anyRequest()`)**: Requiere estar autenticado con un token JWT valido (Header `Authorization: Bearer <TOKEN>`).
 
 ---
 
-## Bounded Contexts (1 Tabla = 1 Modulo)
+## Guia de Instalacion y Ejecucion
 
-Cada tabla de la base de datos funciona como un Bounded Context independiente compuesto por sus propias tres capas (`domain`, `application`, `infrastructure`).
-
-Principales dominios incluidos:
-- **Seguridad y Autenticacion (V10)**: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`.
-- **Geografico y Catalogos (V1)**: `Country`, `StateRegion`, `CityMunicipality`, `DocumentType`, `Gender`, `RelationshipType`.
-- **Profesionales y Estudios (V2)**: `Professional`, `ProfessionalType`, `Study`, `ProfessionalStudy`.
-- **Pacientes y Contactos (V3-V4)**: `Patient`, `PatientAllergy`, `Contact`, `PhoneContact`, `EmailContact`, `PatientContact`.
-- **Historias Clinicas y Consultas (V5-V6)**: `ClinicalRecord`, `ClinicalRecordStatus`, `Encounter`, `EncounterType`, `EncounterModality`, `EncounterStatus`, `ClinicalNote`, `MentalStatusExam`, `RiskAssessment`, `RiskLevel`.
-- **Tratamientos y Diagnosticos (V7)**: `TreatmentPlan`, `TreatmentGoal`, `TreatmentStatus`, `TreatmentGoalStatus`, `MedicationRoute`, `AssessmentType`, `ConsentType`, `DiagnosticSystem`.
-- **Chat, Escalaciones e IA (V8-V9)**: `ChatConversation`, `ChatParticipant`, `ChatMessage`, `ChatAiSettings`, `ChatAiRun`, `ChatAiRunMetric`, `ChatAiRunError`, `ChatEscalation`, `ChatEscalationAssignment`, `ChatEscalationStatusHistory`, `AiModel`, `ProviderModelAi`, `SenderType`, `MessageType`, `Priority`, `ConversationStatus`, `AiRunStatus`, `EscalationStatus`.
-
----
-
-## Requisitos Previos
-
-- **JDK 21** o superior instalado.
-- **Docker Desktop** / **Docker Engine** en ejecucion.
-- **Apache Maven 3.8+** (o el wrapper si aplica).
-
----
-
-## Guia de Instalacion, Ejecucion y Pruebas
-
-### 1. Ubicarse en la rama correcta
-
-Asegurate de estar en la rama donde esta implementada la seguridad:
+### 1. Ubicarse en la rama del modulo de seguridad
 
 ```bash
 git checkout activityMigration
 ```
 
-### 2. Iniciar Base de Datos PostgreSQL con Docker
-
-Levantar el contenedor de PostgreSQL con Docker Compose:
+### 2. Iniciar PostgreSQL con Docker Compose
 
 ```bash
 docker compose up -d
 ```
 
-Verificar que el contenedor `mindconnect-db` este saludable:
-
-```bash
-docker ps
-```
-
-### 3. Compilar y Ejecutar la Aplicacion
-
-Ejecutar la aplicacion con el perfil de desarrollo (`dev`):
+### 3. Compilar y ejecutar la aplicacion Spring Boot
 
 ```bash
 mvn clean spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Al iniciar, **Flyway** creara automaticamente el esquema `mindconnect_schema` y ejecutara las 10 migraciones (`V1` a `V10`), sembrando los roles `ROLE_ADMIN`, `ROLE_PROFESSIONAL` y `ROLE_PATIENT`.
+Durante el despliegue, Flyway ejecutara de forma automatica las migraciones de la `V1` a la `V10`.
 
 ---
 
-## Como Probar el Flujo Completo de Seguridad JWT
+## Guia de Pruebas de Funcionamiento
 
-### Prueba 1: Acceso Bloqueado sin Token (Esperado: 401 Unauthorized)
-Intenta consultar cualquier recurso protegido (por ejemplo, pacientes):
+### Prueba 1: Peticion sin Token (Acceso Bloqueado)
+
+Intento de acceso a un recurso protegido sin credenciales:
 
 ```bash
 curl -i -X GET http://localhost:8080/api/v1/patients
 ```
-> **Respuesta esperada:** `HTTP/1.1 401 Unauthorized`
+
+**Respuesta esperada:**
+```http
+HTTP/1.1 401 Unauthorized
+```
 
 ---
 
 ### Prueba 2: Registro de Usuario
-Registra un nuevo usuario con rol `ROLE_ADMIN`:
+
+Creacion de un usuario administrador:
 
 ```bash
 curl -i -X POST http://localhost:8080/api/v1/auth/register \
@@ -135,12 +139,17 @@ curl -i -X POST http://localhost:8080/api/v1/auth/register \
     "roles": ["ROLE_ADMIN"]
   }'
 ```
-> **Respuesta esperada:** `HTTP/1.1 201 Created` con el ID del usuario y correo.
+
+**Respuesta esperada:**
+```http
+HTTP/1.1 201 Created
+```
 
 ---
 
-### Prueba 3: Inicio de Sesion y Obtencion del Token JWT
-Inicia sesion para obtener el token Bearer:
+### Prueba 3: Autenticacion e Obtencion de Token JWT
+
+Inicio de sesion para obtener el token de acceso:
 
 ```bash
 curl -i -X POST http://localhost:8080/api/v1/auth/login \
@@ -150,28 +159,37 @@ curl -i -X POST http://localhost:8080/api/v1/auth/login \
     "password": "Password123!"
   }'
 ```
-> **Respuesta esperada:** `HTTP/1.1 200 OK` retornando JSON con:
-> ```json
-> {
->   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
->   "tokenType": "Bearer",
->   "expiresIn": 3600000
-> }
-> ```
+
+**Respuesta esperada:**
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600000
+}
+```
 
 ---
 
-### Prueba 4: Acceso Autorizado con Token JWT
-Copia el `accessToken` obtenido y envialo en el header `Authorization`:
+### Prueba 4: Peticion Autenticada con Token JWT
+
+Copiar el valor recibido en `accessToken` y adjuntarlo en la cabecera `Authorization`:
 
 ```bash
 curl -i -X GET http://localhost:8080/api/v1/patients \
-  -H "Authorization: Bearer <TU_TOKEN_AQUI>"
+  -H "Authorization: Bearer <TOKEN_OBTENIDO_EN_PRUEBA_3>"
 ```
-> **Respuesta esperada:** `HTTP/1.1 200 OK` con la lista de registros de la tabla.
+
+**Respuesta esperada:**
+```http
+HTTP/1.1 200 OK
+```
 
 ---
 
 ## Licencia
 
-Este proyecto esta bajo la licencia MIT.
+Este proyecto se distribuye bajo la licencia MIT.
