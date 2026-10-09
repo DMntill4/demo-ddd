@@ -109,84 +109,74 @@ Durante el despliegue, Flyway ejecutara de forma automatica las migraciones de l
 
 ---
 
-## Guia de Pruebas de Funcionamiento
+## Guia de Pruebas de Funcionamiento en Postman
 
 ### Prueba 1: Peticion sin Token (Acceso Bloqueado)
 
-Intento de acceso a un recurso protegido sin credenciales:
+Verifica que las tablas esten protegidas contra accesos no autorizados.
 
-```bash
-curl -i -X GET http://localhost:8080/api/v1/patients
-```
-
-**Respuesta esperada:**
-```http
-HTTP/1.1 401 Unauthorized
-```
+- **Method**: `GET`
+- **URL**: `http://localhost:8080/api/v1/patients`
+- **Authorization**: `No Auth`
+- **Resultado esperado**: `401 Unauthorized`
 
 ---
 
-### Prueba 2: Registro de Usuario
+### Prueba 2: Registro de Usuario (Register)
 
-Creacion de un usuario administrador:
+Crea un nuevo usuario en la base de datos PostgreSQL con rol administrador.
 
-```bash
-curl -i -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/v1/auth/register`
+- **Headers**: `Content-Type: application/json`
+- **Body** (`raw` -> `JSON`):
+  ```json
+  {
     "email": "admin@mindconnect.com",
     "password": "Password123!",
     "roles": ["ROLE_ADMIN"]
-  }'
-```
-
-**Respuesta esperada:**
-```http
-HTTP/1.1 201 Created
-```
+  }
+  ```
+- **Resultado esperado**: `201 Created`
 
 ---
 
-### Prueba 3: Autenticacion e Obtencion de Token JWT
+### Prueba 3: Autenticacion e Obtencion de Token JWT (Login)
 
-Inicio de sesion para obtener el token de acceso:
+Inicia sesion para validar credenciales y recibir el token JWT.
 
-```bash
-curl -i -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/api/v1/auth/login`
+- **Headers**: `Content-Type: application/json`
+- **Body** (`raw` -> `JSON`):
+  ```json
+  {
     "email": "admin@mindconnect.com",
     "password": "Password123!"
-  }'
-```
-
-**Respuesta esperada:**
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
-  "tokenType": "Bearer",
-  "expiresIn": 3600000
-}
-```
+  }
+  ```
+- **Resultado esperado**: `200 OK`
+- **Copia del token**: Copia la cadena del campo `"accessToken"` en el JSON de respuesta:
+  ```json
+  {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
+    "tokenType": "Bearer",
+    "expiresIn": 3600000
+  }
+  ```
 
 ---
 
 ### Prueba 4: Peticion Autenticada con Token JWT
 
-Copiar el valor recibido en `accessToken` y adjuntarlo en la cabecera `Authorization`:
+Accede a los endpoints protegidos adjuntando el token JWT.
 
-```bash
-curl -i -X GET http://localhost:8080/api/v1/patients \
-  -H "Authorization: Bearer <TOKEN_OBTENIDO_EN_PRUEBA_3>"
-```
-
-**Respuesta esperada:**
-```http
-HTTP/1.1 200 OK
-```
+- **Method**: `GET`
+- **URL**: `http://localhost:8080/api/v1/patients`
+- **Authorization**:
+  - **Type**: `Bearer Token`
+  - **Token**: Pega el `accessToken` copiado de la Prueba 3.
+- **Resultado esperado**: `200 OK` retornando la lista de registros de la tabla.
 
 ---
 
